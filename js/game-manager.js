@@ -4,14 +4,18 @@ var GameManager = {
         gravity: 1000,
         speed: 120,
         jump: 390,
-        tileIndex: 9
+        tileIndex: 9,
+        enemyHit: 40
     },
     enemy: {
-        tileIndex: 10
+        bounce: 0.1,
+        gravity: 1000,
+        speed: 50,
+        tileIndex: 10,
     },
     width: 480,
     height: 320,
-    levels: [ 'level2' ],
+    levels: [ 'level3' ],
     currentLevel: 0,
     nextLevel: function(){
         this.currentLevel++;
