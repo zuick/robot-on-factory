@@ -1,97 +1,108 @@
-var game = new Phaser.Game(160, 160, Phaser.CANVAS, '', { preload: preload, create: create, update: update, render: render }, null, false, false);
+GameManager.levelConstructor = function( levelName ){
+    return function( game ){
+        this.game = game;
+        this.create = function(){
+            this.enableFullscreen();
+            
+            this.game.stage.backgroundColor = '#000';
+            this.map = this.game.add.tilemap( levelName );
+            this.map.addTilesetImage('tileset', 'tileset');
+            this.map.setCollision( [4,5,6] );
+            this.mapLayer = this.map.createLayer('ground');
+            this.mapLayer.resizeWorld();
+            
+            this.player = this.createPlayer();
+            this.enemies = this.createEnemies();
+            
+            this.cursors = this.game.input.keyboard.createCursorKeys();
+            
+            this.game.camera.follow( this.player );
+        }
+        this.update = function(){
+            this.game.physics.collide(this.player, this.mapLayer, this.checkPlayerCollisions, null, this.game );
 
-function preload() {
-    
-    game.load.spritesheet('hero', 'assets/hero.png', 16, 16);
-    game.load.tilemap('level1', 'assets/level1.json', null, Phaser.Tilemap.TILED_JSON);
-    game.load.tilemap('level2', 'assets/level2.json', null, Phaser.Tilemap.TILED_JSON);
-    game.load.tileset('tileset', 'assets/tileset.png', 16, 16);
-}
+            //  Reset the players velocity (movement)
+            this.player.body.velocity.x = 0;
 
-function create() {
-    
+            if (this.cursors.left.isDown)
+            {
+                //  Move to the left
+                this.player.body.velocity.x = - GameManager.player.speed;
 
-    map = game.add.tilemap('level2');
-    tileset = game.add.tileset('tileset');
-    tileset.setCollision( 4, true, true, true, true );
-    tileset.setCollision( 5, true, true, true, true );
-    layer1 = game.add.tilemapLayer(0, 0, 160, 160, tileset, map, 0);
-    layer1.resizeWorld();
-    
-    
-    heroXY = getObjectsPositionFromMap( map, 'characters', 9 )[0];
-    player = game.add.sprite( heroXY.x * tileset.tileWidth, heroXY.y * tileset.tileHeight, 'hero');
-    
-    player.body.bounce.y = 0;
-    player.body.gravity.y = 18;
-    player.body.collideWorldBounds = true;
-  
-    player.animations.add('left', [0, 1], 7, true);
-    player.animations.add('right', [3, 4], 7, true);
-    player.body.setSize(8, 16, 7 ,2);
-    
-    cursors = game.input.keyboard.createCursorKeys();
+                this.player.animations.play('left');
+            }
+            else if (this.cursors.right.isDown)
+            {
+                //  Move to the right
+                this.player.body.velocity.x = GameManager.player.speed;
+                //game.camera.x +=5;
+                this.player.animations.play('right');
+            }
+            else
+            {
+                //  Stand still
+                this.player.animations.stop();
 
-    game.camera.follow( player );
-}
+                this.player.frame = 4;
+            }
 
-function update() {
-    game.physics.collide(player, layer1);
-    
-    //  Reset the players velocity (movement)
-    player.body.velocity.x = 0;
- 
-    if (cursors.left.isDown)
-    {
-        //  Move to the left
-        player.body.velocity.x = -100;
-        
-        player.animations.play('left');
-    }
-    else if (cursors.right.isDown)
-    {
-        //  Move to the right
-        player.body.velocity.x = 100;
-        //game.camera.x +=5;
-        player.animations.play('right');
-    }
-    else
-    {
-        //  Stand still
-        player.animations.stop();
- 
-        player.frame = 4;
-    }
- 
-    //  Allow the player to jump if they are touching the ground.
-    if (cursors.up.isDown && player.body.touching.down)
-    {
-        player.body.velocity.y = -350;
-    }
-    
-}
-
-function render(){
-    //game.debug.renderCameraInfo(game.camera, 0, 32);
-}
-
-function getObjectsPositionFromMap( map, layerName, tileIndex ){
-    var result = [];
-    // find layer
-    for( var i in map.layers ){
-        var layer = map.layers[i];
-        if( layer.name == layerName ){
-            // find objects
-            for( var k in layer.data ){
-                for( var l in layer.data ){
-                    if( layer.data[k][l] == tileIndex ){
-                        result.push({x: l , y: k });
-                    }         
+            //  Allow the player to jump if they are touching the ground.
+            if (this.cursors.up.isDown && this.player.body.onFloor() )
+            {
+                this.player.body.velocity.y = -GameManager.player.jump;
+            }
+        }
+        this.getObjectsPositionFromMap = function ( map, layerName, tileIndex ){
+            var result = [];
+            // find layer
+            for( var i in map.layers ){
+                var layer = map.layers[i];
+                if( layer.name == layerName ){
+                    // find objects
+                    for( var k in layer.data ){
+                        for( var l in layer.data ){
+                            if( layer.data[k][l] && layer.data[k][l].index == tileIndex ){
+                                result.push({x: l , y: k });
+                            }         
+                        }
+                    }
+                    break;
                 }
             }
-            break;
+
+            return result;
+        }
+    
+        this.checkPlayerCollisions = function ( player, object ){
+            if( object.tile.index == 4 ) {
+                this.state.start( GameManager.nextLevel() );
+            }
+        }
+        
+        this.enableFullscreen = function(){
+            Phaser.Canvas.setSmoothingEnabled(this.game.context, false)
+            this.game.stage.fullScreenScaleMode = Phaser.StageScaleMode.SHOW_ALL;
+            game.input.onDown.add( function(){ this.game.stage.scale.startFullScreen(); }, this);
+        }
+        
+        this.createPlayer = function(){
+            var heroXY = this.getObjectsPositionFromMap( this.map, 'characters', GameManager.player.tileIndex )[0];
+            var player = this.game.add.sprite( heroXY.x * this.map.tileWidth, heroXY.y * this.map.tileHeight, 'hero');
+            player.body.bounce.y = GameManager.player.bounce;
+            player.body.gravity.y = GameManager.player.gravity;
+            player.body.collideWorldBounds = true;
+            player.animations.add('left', [1,2,0], 7, true);
+            player.animations.add('right', [4,3,5], 7, true);
+            return player;
+        }
+        
+        this.createEnemies = function(){
+            var enemies = this.game.add.group();
+            var enemiesXY = this.getObjectsPositionFromMap( this.map, 'characters', GameManager.enemy.tileIndex );
+            for( var i in enemiesXY ){
+                enemies.create( enemiesXY[i].x * this.map.tileWidth, enemiesXY[i].y * this.map.tileHeight, 'enemy' );
+            }
+            return enemies;
         }
     }
-    
-    return result;
 }
