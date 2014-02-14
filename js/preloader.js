@@ -17,7 +17,7 @@ GameManager.Preloader.prototype = {
 	},
         
 	create: function () {
-		this.game.state.start('mainmenu');
+            this.game.state.start(GameManager.levels[0]);
 	}
 
 }

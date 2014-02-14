@@ -23,7 +23,7 @@ GameManager.levelConstructor = function( levelName ){
             this.game.physics.collide(this.player, this.enemies, this.checkPlayerCollisions, this.processPlayerEnemyCollisions, this.game );
             this.game.physics.collide(this.enemies, this.mapLayer);
             this.game.physics.collide(this.enemies, this.enemies, null, this.processEnemiesCollisions, this.game );
-
+            
             //  Reset the players velocity (movement)
             this.player.body.velocity.x = 0;
 
@@ -41,11 +41,10 @@ GameManager.levelConstructor = function( levelName ){
 
                 this.player.frame = 4;
             }
-            if( this.player.body.onFloor() ) this.player.jumping = false;
+            
             //  Allow the player to jump if they are touching the ground.
             if (this.cursors.up.isDown && this.player.body.onFloor() ){
                 this.player.body.velocity.y = -GameManager.player.jump;
-                this.player.jumping = true;
             }
             
             this.enemies.forEach( function( enemy ){
@@ -88,14 +87,13 @@ GameManager.levelConstructor = function( levelName ){
             if( object.tile && object.tile.index == 4 ) {
                 this.state.start( GameManager.nextLevel() );
             }else if( object.key == 'enemy' ){
-                
-                    // TODO: check if player just falling to enemy
-                if( player.jumping ){
+                if( object.body.touching.up ){
                     player.body.velocity.y = -GameManager.player.jump;
                     object.death();
                 }else{
                     game.state.start('mainmenu');
                 }
+                
             }
         }
         
