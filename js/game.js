@@ -9,12 +9,13 @@ GameManager.levelConstructor = function( levelName ){
             this.game.stage.backgroundColor = '#000';
             this.map = this.game.add.tilemap( levelName );
             this.map.addTilesetImage('tileset', 'tileset');
-            this.map.setCollision( [4,5,6] );
+            this.map.setCollision( [4,5,6,7,8] );
             this.mapLayer = this.map.createLayer('ground');
             this.mapLayer.resizeWorld();
             
             this.enemies = this.createEnemies();
             this.player = this.createPlayer();
+            this.lifts = this.createLifts();
             
             this.cursors = this.game.input.keyboard.createCursorKeys();
             
@@ -23,6 +24,8 @@ GameManager.levelConstructor = function( levelName ){
         this.update = function(){
             this.game.physics.collide(this.player, this.mapLayer, this.checkPlayerCollisions, null, this.game );
             this.game.physics.collide(this.player, this.enemies, this.checkPlayerCollisions, this.processPlayerEnemyCollisions, this.game );
+            this.game.physics.collide(this.player, this.lifts);
+            this.game.physics.collide(this.lifts, this.mapLayer);
             this.game.physics.collide(this.enemies, this.mapLayer);
             this.game.physics.collide(this.enemies, this.enemies, null, this.processEnemiesCollisions, this.game );
             
@@ -53,6 +56,10 @@ GameManager.levelConstructor = function( levelName ){
             
             this.enemies.forEach( function( enemy ){
                 enemy.moveLogic();
+            }, this.game)
+            
+            this.lifts.forEach( function( lift ){
+                lift.moveLogic();
             }, this.game)
         }
         
@@ -126,7 +133,25 @@ GameManager.levelConstructor = function( levelName ){
             }
             return player;
         }
-        
+        this.createLifts = function(){
+            var lifts = this.game.add.group();
+            var liftsXY = this.getObjectsPositionFromMap( this.map, 'movable', GameManager.lift.tileIndex );
+            for( var i in liftsXY ){
+                var lift = lifts.create( liftsXY[i].x * this.map.tileWidth, liftsXY[i].y * this.map.tileHeight, 'lift' );
+                lift.vx = GameManager.lift.speed;
+                lift.body.velocity.x = lift.vx;
+                lift.body.collideWorldBounds = true;
+                lift.body.immovable = true;
+                
+                lift.moveLogic = function(){
+                    if( this.body.velocity.x == 0 && !this.dead){ 
+                        this.vx = - this.vx;
+                        this.body.velocity.x = this.vx;
+                    }
+                }
+            }
+            return lifts;
+        }
         this.createEnemies = function(){
             var enemies = this.game.add.group();
             var enemiesXY = this.getObjectsPositionFromMap( this.map, 'characters', GameManager.enemy.tileIndex );
