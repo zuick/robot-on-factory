@@ -15,7 +15,7 @@ var GameManager = {
     },
     width: 480,
     height: 320,
-    levels: [ 'level3' ],
+    levels: [ 'level1', 'level2', 'level3' ],
     currentLevel: 0,
     nextLevel: function(){
         this.currentLevel++;
