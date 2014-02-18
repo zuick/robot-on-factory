@@ -13,9 +13,13 @@ var GameManager = {
         speed: 50,
         tileIndex: 10,
     },
-    width: 480,
-    height: 320,
-    levels: [ 'level3' ],
+    lift: {
+        speed: 75,
+        tileIndex: 12,
+    },
+    width: 640,
+    height: 480,
+    levels: [ 'level2' ],
     currentLevel: 0,
     nextLevel: function(){
         this.currentLevel++;

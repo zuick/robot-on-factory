@@ -7,7 +7,7 @@ GameManager.levelConstructor = function( levelName ){
             this.game.stage.backgroundColor = '#000';
             this.map = this.game.add.tilemap( levelName );
             this.map.addTilesetImage('tileset', 'tileset');
-            this.map.setCollision( [4,5,6] );
+            this.map.setCollision( [4,5,6] );   
             this.mapLayer = this.map.createLayer('ground');
             this.mapLayer.resizeWorld();
             
@@ -15,6 +15,11 @@ GameManager.levelConstructor = function( levelName ){
             this.player = this.createPlayer();
             
             this.cursors = this.game.input.keyboard.createCursorKeys();
+            this.key1 = game.input.keyboard.addKey(Phaser.Keyboard.ONE);
+            this.key1.onDown.add(this.changeTile, this);
+            
+            this.key2 = game.input.keyboard.addKey(Phaser.Keyboard.TWO);
+            this.key2.onDown.add( function(){ this.findAndDestroyTileLines( 'ground', [5,6,7,8]); }.bind(this), this);
             
             this.game.camera.follow( this.player );
         }
@@ -72,7 +77,38 @@ GameManager.levelConstructor = function( levelName ){
 
             return result;
         }
-        
+        this.changeTile = function(){
+            this.map.putTile( 5, Math.floor( this.player.x / this.map.tileWidth ), Math.floor( this.player.y / this.map.tileHeight ) + 2, "ground");
+            this.map.setCollision( [4,5,6,7,8] );
+        }
+        this.destroyTileLine = function( row, layer, tileIndexes ){
+            for( var i in layer.data[row] ){
+                var tileIndex = Math.floor( Math.random() * tileIndexes.length );
+                this.map.putTile( tileIndexes[tileIndex], i, parseInt( row ), layer.name );
+                if( layer.data[row][i] ) layer.data[row][i].collides = false;
+            }
+            this.map.setCollision( [4,5,6,7,8] );
+        }
+        this.findAndDestroyTileLines = function( layerName, tileIndexes ){
+            for( var i in this.map.layers ){
+                var layer = this.map.layers[i];
+                if( layer.name == layerName ){
+                    for( var k in layer.data ){
+                        for( var l in layer.data[k] ){
+                            // check if tile collidable
+                            if( layer.data[k][l] && tileIndexes.indexOf( layer.data[k][l].index ) >= 0 ){
+                                // check if it last tile in row
+                                if( l == layer.data.length - 1 ){
+                                    this.destroyTileLine( k, layer, [1,2,3] );
+                                }
+                            }else{
+                                break;
+                            }
+                        }
+                    }
+                }
+            }
+        }
         this.processEnemiesCollisions = function( enemyA, enemyB ){
             if( enemyA.dead || enemyB.dead ) return false;
             else return true;
