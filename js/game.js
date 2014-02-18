@@ -1,18 +1,21 @@
 GameManager.levelConstructor = function( levelName ){
     return function( game ){
         this.game = game;
+        this.render = function(){
+        }
         this.create = function(){
             this.enableFullscreen();
             
             this.game.stage.backgroundColor = '#000';
             this.map = this.game.add.tilemap( levelName );
             this.map.addTilesetImage('tileset', 'tileset');
-            this.map.setCollision( [4,5,6] );   
+            this.map.setCollision( [4,5,6,7,8] );
             this.mapLayer = this.map.createLayer('ground');
             this.mapLayer.resizeWorld();
             
             this.enemies = this.createEnemies();
             this.player = this.createPlayer();
+            this.lifts = this.createLifts();
             
             this.cursors = this.game.input.keyboard.createCursorKeys();
             this.key1 = game.input.keyboard.addKey(Phaser.Keyboard.ONE);
@@ -26,25 +29,29 @@ GameManager.levelConstructor = function( levelName ){
         this.update = function(){
             this.game.physics.collide(this.player, this.mapLayer, this.checkPlayerCollisions, null, this.game );
             this.game.physics.collide(this.player, this.enemies, this.checkPlayerCollisions, this.processPlayerEnemyCollisions, this.game );
+            this.game.physics.collide(this.player, this.lifts);
+            this.game.physics.collide(this.lifts, this.mapLayer);
             this.game.physics.collide(this.enemies, this.mapLayer);
             this.game.physics.collide(this.enemies, this.enemies, null, this.processEnemiesCollisions, this.game );
             
             //  Reset the players velocity (movement)
             this.player.body.velocity.x = 0;
+            
+            if( !this.player.dead ){
+                if (this.cursors.left.isDown){
+                    //  Move to the left
+                    this.player.body.velocity.x = - GameManager.player.speed;
+                    this.player.animations.play('left');
+                }else if (this.cursors.right.isDown){
+                    //  Move to the right
+                    this.player.body.velocity.x = GameManager.player.speed;
+                    this.player.animations.play('right');
+                }else{
+                    //  Stand still
+                    this.player.animations.stop();
 
-            if (this.cursors.left.isDown){
-                //  Move to the left
-                this.player.body.velocity.x = - GameManager.player.speed;
-                this.player.animations.play('left');
-            }else if (this.cursors.right.isDown){
-                //  Move to the right
-                this.player.body.velocity.x = GameManager.player.speed;
-                this.player.animations.play('right');
-            }else{
-                //  Stand still
-                this.player.animations.stop();
-
-                this.player.frame = 4;
+                    this.player.frame = 4;
+                }
             }
             
             //  Allow the player to jump if they are touching the ground.
@@ -54,6 +61,10 @@ GameManager.levelConstructor = function( levelName ){
             
             this.enemies.forEach( function( enemy ){
                 enemy.moveLogic();
+            }, this.game)
+            
+            this.lifts.forEach( function( lift ){
+                lift.moveLogic();
             }, this.game)
         }
         
@@ -115,7 +126,7 @@ GameManager.levelConstructor = function( levelName ){
         }
         
         this.processPlayerEnemyCollisions = function( player, enemy ){
-            if( enemy.dead ) return false;
+            if( enemy.dead || player.dead ) return false;
             else return true;
         }
     
@@ -127,7 +138,7 @@ GameManager.levelConstructor = function( levelName ){
                     player.body.velocity.y = -GameManager.player.jump;
                     object.death();
                 }else{
-                    game.state.start('mainmenu');
+                    player.death();
                 }
                 
             }
@@ -145,12 +156,38 @@ GameManager.levelConstructor = function( levelName ){
             player.body.bounce.y = GameManager.player.bounce;
             player.body.gravity.y = GameManager.player.gravity;
             player.body.collideWorldBounds = true;
-            player.body.setRectangle( 28, 29, 0, 4 );
+            player.body.setRectangle( 26, 27, 3, 6 );
             player.animations.add('left', [1,2,0], 7, true);
             player.animations.add('right', [4,3,5], 7, true);
+            player.animations.add('death', [6,7], 3, false);
+            player.death = function(){
+                this.dead = true;
+                this.body.velocity.y = -180;
+                this.body.bounce.y = 0.3;
+                this.animations.play('death');
+                setTimeout( function(){ game.state.start(GameManager.levels[0]) }, 1000 );
+            }
             return player;
         }
-        
+        this.createLifts = function(){
+            var lifts = this.game.add.group();
+            var liftsXY = this.getObjectsPositionFromMap( this.map, 'movable', GameManager.lift.tileIndex );
+            for( var i in liftsXY ){
+                var lift = lifts.create( liftsXY[i].x * this.map.tileWidth, liftsXY[i].y * this.map.tileHeight, 'lift' );
+                lift.vx = GameManager.lift.speed;
+                lift.body.velocity.x = lift.vx;
+                lift.body.collideWorldBounds = true;
+                lift.body.immovable = true;
+                
+                lift.moveLogic = function(){
+                    if( this.body.velocity.x == 0 && !this.dead){ 
+                        this.vx = - this.vx;
+                        this.body.velocity.x = this.vx;
+                    }
+                }
+            }
+            return lifts;
+        }
         this.createEnemies = function(){
             var enemies = this.game.add.group();
             var enemiesXY = this.getObjectsPositionFromMap( this.map, 'characters', GameManager.enemy.tileIndex );
@@ -161,7 +198,7 @@ GameManager.levelConstructor = function( levelName ){
                 enemy.body.bounce.y = GameManager.enemy.bounce;
                 enemy.body.gravity.y = GameManager.enemy.gravity;
                 enemy.body.collideWorldBounds = true;
-                enemy.body.setRectangle( 28, 29, 0, 4 );
+                enemy.body.setRectangle( 26, 27, 3, 6 );
                 enemy.animations.add('death', [6], 5, false);
                 enemy.animations.add('left', [1,2,0], 7, true);
                 enemy.animations.add('right', [4,3,5], 7, true);
