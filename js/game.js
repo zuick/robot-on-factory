@@ -109,7 +109,7 @@ GameManager.levelConstructor = function( levelName ){
                             // check if tile collidable
                             if( layer.data[k][l] && tileIndexes.indexOf( layer.data[k][l].index ) >= 0 ){
                                 // check if it last tile in row
-                                if( l == layer.data.length - 1 ){
+                                if( l == layer.data[k].length - 1 ){
                                     this.destroyTileLine( k, layer, [1,2,3] );
                                 }
                             }else{
