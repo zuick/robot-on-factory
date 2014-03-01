@@ -16,13 +16,20 @@ GameManager.levelConstructor = function( levelName ){
             this.enemies = this.createEnemies();
             this.player = this.createPlayer();
             this.lifts = this.createLifts();
+            this.tetrisBlock = this.createTetrisShape();
             
             this.cursors = this.game.input.keyboard.createCursorKeys();
-            this.key1 = game.input.keyboard.addKey(Phaser.Keyboard.ONE);
-            this.key1.onDown.add(this.changeTile, this);
             
-            this.key2 = game.input.keyboard.addKey(Phaser.Keyboard.TWO);
-            this.key2.onDown.add( function(){ this.findAndDestroyTileLines( 'ground', [5,6,7,8]); }.bind(this), this);
+            game.input.keyboard.addKey(Phaser.Keyboard.ONE).onDown.add(this.changeTile, this);
+            
+            game.input.keyboard.addKey(Phaser.Keyboard.TWO).onDown.add( function(){ 
+                this.findAndDestroyTileLines( 'ground', [5,6,7,8]); 
+            }.bind(this), this);
+            
+            game.input.keyboard.addKey(Phaser.Keyboard.THREE).onDown.add( function(){ this.tetrisBlock.restartBlock(); }, this);
+            
+            this.keys = {};
+            this.keys.space = game.input.keyboard.addKey( Phaser.Keyboard.SPACEBAR );
             
             this.game.camera.follow( this.player );
         }
@@ -33,9 +40,11 @@ GameManager.levelConstructor = function( levelName ){
             this.game.physics.collide(this.lifts, this.mapLayer);
             this.game.physics.collide(this.enemies, this.mapLayer);
             this.game.physics.collide(this.enemies, this.enemies, null, this.processEnemiesCollisions, this.game );
+            this.game.physics.collide(this.tetrisBlock, this.mapLayer, this.checkTetrisBlockCollisions, this.processTetrisBlockCollisions, this.game );            
             
             //  Reset the players velocity (movement)
             this.player.body.velocity.x = 0;
+            this.tetrisBlock.body.velocity.x = 0;
             
             if( !this.player.dead ){
                 if (this.cursors.left.isDown){
@@ -54,6 +63,21 @@ GameManager.levelConstructor = function( levelName ){
                 }
             }
             
+            if( this.keys.space.isDown ){
+                if( this.player.x < this.tetrisBlock.x ){
+                    this.tetrisBlock.body.velocity.x = -100;
+                }else{
+                    this.tetrisBlock.body.velocity.x = 100;
+
+                }
+            }
+            
+            
+            if( this.tetrisBlock.fallen ){
+                console.log( "f")
+                this.tetrisBlock.restartBlock();
+            }
+            
             //  Allow the player to jump if they are touching the ground.
             if (this.cursors.up.isDown && this.player.body.onFloor() ){
                 this.player.body.velocity.y = -GameManager.player.jump;
@@ -67,7 +91,7 @@ GameManager.levelConstructor = function( levelName ){
                 lift.moveLogic();
             }, this.game)
         }
-        
+
         this.getObjectsPositionFromMap = function ( map, layerName, tileIndex ){
             var result = [];
             // find layer
@@ -90,7 +114,7 @@ GameManager.levelConstructor = function( levelName ){
         }
         this.changeTile = function(){
             this.map.putTile( 5, Math.floor( this.player.x / this.map.tileWidth ), Math.floor( this.player.y / this.map.tileHeight ) + 2, "ground");
-            this.map.setCollision( [4,5,6,7,8] );
+            //this.map.setCollision( [4,5,6,7,8] );
         }
         this.destroyTileLine = function( row, layer, tileIndexes ){
             for( var i in layer.data[row] ){
@@ -143,13 +167,30 @@ GameManager.levelConstructor = function( levelName ){
                 
             }
         }
-        
+        this.processTetrisBlockCollisions = function( block, mapLayer ){
+            console.log("collision");
+            //block.fallen = true;
+        }
         this.enableFullscreen = function(){
             Phaser.Canvas.setSmoothingEnabled(this.game.context, false)
             this.game.stage.fullScreenScaleMode = Phaser.StageScaleMode.SHOW_ALL;
             game.input.onDown.add( function(){ this.game.stage.scale.startFullScreen(); }, this);
         }
-        
+        this.createTetrisShape = function(){
+            var tetrisBlock = this.game.add.sprite( Math.floor( Math.random() * this.map.width * 32 ), 0, 'tetris-block' );                
+            tetrisBlock.body.bounce.y = 0;
+            tetrisBlock.body.gravity.y = 0;
+            tetrisBlock.body.velocity.y = 100;
+            
+            var mapWidth = this.map.width;
+            tetrisBlock.restartBlock = function(){
+                console.log("restart")
+                this.y = 0; this.x = Math.floor( Math.random() * mapWidth * 32 ) 
+                this.fallen = false;
+                this.body.velocity.y = 50;
+            }
+            return tetrisBlock;
+        }
         this.createPlayer = function(){
             var heroXY = this.getObjectsPositionFromMap( this.map, 'characters', GameManager.player.tileIndex )[0];
             var player = this.game.add.sprite( heroXY.x * this.map.tileWidth, heroXY.y * this.map.tileHeight, 'hero');
